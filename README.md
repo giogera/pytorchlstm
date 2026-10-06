@@ -1,16 +1,8 @@
 # pytorchlstm
 
-A small, tested PyTorch project for **one-step-ahead forecasting of a time series with a
-Long Short-Term Memory (LSTM)**. The input can be **univariate or multivariate**: the model reads
-one or more CSV columns as features and predicts the next value of a target column. It turns the
-data into sliding windows, trains with early stopping, compares against a naive baseline, saves a
-self-contained checkpoint, and plots the results.
+PyTorch implementation of a Long Short-Term Memory (LSTM) model for one-step-ahead time-series forecasting.
 
-```
-CSV feature columns ──> normalize ──> sliding windows ──> LSTM ──> next target value
-                     (per column,    (window × n_features)   │
-                      train stats)                           └─> checkpoint (.pt) + plots
-```
+[![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
 
 ## Contents
 
@@ -28,29 +20,26 @@ CSV feature columns ──> normalize ──> sliding windows ──> LSTM ─�
 
 ## Features
 
-- Stacked LSTM regressor (`hidden` size and number of layers configurable)
-- Univariate or multivariate input: any set of CSV columns as features, any column as the
-  target (the target may or may not be one of the features)
-- Chronological train / validation / test split with no data leakage:
-  normalization statistics come from the fitting portion only
-- Early stopping on validation loss, with the best weights restored
-- Reproducible runs: the seed fixes both the initial weights and the batch shuffling, so
-  rerunning the same command on the same machine gives identical results
-- Evaluation with MAE and RMSE, compared against a "last value" (persistence)
-  baseline
+- Stacked LSTM regressor with configurable hidden size and number of layers.
+- Multivariate input: any set of CSV columns as features, any column as the
+  target.
+- Train/validation/test split with no shuffling and no data leakage:
+  normalization statistics come from the fitting portion only.
+- Early stopping on validation loss, with the best weights restored.
+- Configurable seed for reproducible runs.
+- Evaluation with MAE and RMSE.
 - Single-file checkpoints containing weights, config (including column names) and
-  normalization stats, so inference needs nothing else
+  normalization stats.
 - Optional evaluation plots: loss curves, predictions, predicted-vs-actual
-  scatter, residuals
-- JSON configuration with sensible defaults for every value
-- Type-checked (mypy), linted (ruff) and covered by a pytest suite
+  scatter, residuals.
+- JSON configuration with defaults for every hyperparameter.
 
 ## Requirements
 
-- Python **3.12+**
+- Python >= 3.12
 - `torch`, `numpy`, `pandas`, `matplotlib`
 
-Training runs on the CPU; no GPU is needed.
+Training runs on the CPU.
 
 ## Installation
 
@@ -63,27 +52,20 @@ source .venv/bin/activate
 # Runtime only
 pip install -e .
 
-# Runtime + development tools (pytest, ruff, mypy, pandas-stubs)
+# Runtime and development tools (pytest, ruff, mypy, pandas-stubs)
 pip install -e ".[dev]"
 ```
 
-The package lives in `src/pytorchlstm` and is installed in editable mode, so
-the scripts in `scripts/` can import it.
-
 ## Quick start
 
-Run all commands **from the project root** (the default paths are relative to
-it).
+Run all commands from the project root.
 
 ```bash
-# 1. Generate a demo dataset (noisy sine wave + a leading indicator) -> data/demo.csv
+# 1. Generate a demo dataset and save it to `data/demo.csv`
 python scripts/make_demo_data.py
 
-# 2a. Univariate: predict `value` from its own past
+# 2. Run a training session with specified hyperparameters configuration and plots directory
 python scripts/train.py --config configs/default.json --plots-dir plots
-
-# 2b. Multivariate: predict `value` from the past of `value` and `lead`
-python scripts/train.py --config configs/multivariate.json --plots-dir plots
 
 # 3. Predict the value that follows the end of the series
 python scripts/predict.py
@@ -136,22 +118,22 @@ optionally saves plots.
 | `--output`      | `models/lstm.pt` | Where to write the checkpoint. Parent dirs are created. |
 | `--plots-dir`   | *(none)*         | If given, evaluation plots are saved in this directory. |
 
+Usage examples:
 ```bash
 # Univariate: predict `price` from past prices
 python scripts/train.py --csv my_data.csv --target price \
     --config configs/default.json --output models/price.pt --plots-dir plots/price
 
-# Multivariate: predict `price` from past price, volume and temperature
+# Example: predict `price` from past price, volume and temperature
 python scripts/train.py --csv my_data.csv --target price --features price volume temperature \
     --config configs/default.json --output models/price_multi.pt
 ```
 
-The model's input size (`model.n_features`) is always set to the number of feature columns, so
-you never need to set it by hand.
+The model's input size (`model.n_features`) is automatically set to the number of feature columns.
 
 ### `scripts/predict.py`
 
-Loads a checkpoint, takes the last `window` rows of the feature columns and predicts the next
+Loads a checkpoint, takes the last `window` rows of the feature columns, and predicts the next
 value of the target.
 
 | Option          | Default          | Description                          |
@@ -159,18 +141,16 @@ value of the target.
 | `--checkpoint`  | `models/lstm.pt` | Checkpoint produced by `train.py`.   |
 | `--csv`         | `data/demo.csv`  | CSV with the series to extend.       |
 
-The feature and target column names, the window length and the normalization all come from the
-checkpoint. The CSV must contain the feature columns and have at least `window` rows.
+The feature and target column names, the window length, and the normalization all come from the
+checkpoint. The CSV file must contain the feature columns and have at least `window` rows.
 
 ### `scripts/make_demo_data.py`
 
-Writes `data/demo.csv` with two columns for `t = 0 … 999` (seed 0):
+Writes `data/demo.csv` with two columns for `t = 0 ... 999` (seed 0):
 
 - `value`: `sin(t / 20) + 0.1 · noise`, the series to forecast
 - `lead`: `sin((t + 5) / 20) + 0.1 · noise`, the same signal 5 steps ahead, i.e. a leading
   indicator that a multivariate model can exploit
-
-It takes no arguments.
 
 ### Input format
 
@@ -189,11 +169,10 @@ the target are ignored. A missing column raises an error listing the available o
 
 ## Configuration
 
-Configs are JSON files with up to three sections: `model`, `data` and
-`training`. Every key is optional; anything left out uses the default below.
-Unknown sections or keys raise an error, so typos are caught early.
+Hyperparameters configs are JSON files with up to three sections: `model`, `data` and
+`training`. Every key is optional and unknown sections or keys raise an error.
 
-`configs/default.json` (univariate):
+Univariate configuration example:
 
 ```json
 {
@@ -203,7 +182,7 @@ Unknown sections or keys raise an error, so typos are caught early.
 }
 ```
 
-`configs/multivariate.json` adds the columns to use:
+Multivariate configuration example (see `configs/default.json`):
 
 ```json
 {
@@ -227,7 +206,7 @@ Unknown sections or keys raise an error, so typos are caught early.
 | `model`    | `n_layers`       | `1`     | Number of stacked LSTM layers. |
 | `data`     | `window`         | `30`    | Number of past values used to predict the next one. |
 | `data`     | `train_fraction` | `0.8`   | Share of the series used for training + validation; the rest is the test set. |
-| `data`     | `val_fraction`   | `0.15`  | Share of the *training part* held out for validation / early stopping. |
+| `data`     | `val_fraction`   | `0.15`  | Share of the *training part* held out for validation/early stopping. |
 | `data`     | `target`         | `"value"` | Column to predict. |
 | `data`     | `features`       | `null`  | List of input columns. `null` means just the target (univariate). |
 | `training` | `epochs`         | `30`    | Maximum number of epochs. |
@@ -236,30 +215,28 @@ Unknown sections or keys raise an error, so typos are caught early.
 | `training` | `seed`           | `0`     | Random seed for PyTorch and NumPy. |
 | `training` | `patience`       | `5`     | Epochs without validation improvement before stopping. Must be ≥ 1. |
 
-The defaults in this table are the code defaults (used when no `--config` is
-passed); `configs/default.json` overrides some of them.
+The defaults in this table are used when no `--config` is
+passed.
 
 ## How it works
 
 ### Data split
 
-The series is split in time order, never shuffled across splits:
+The series is split in time order and never shuffled across splits:
 
 ```
 |<──────────── train_fraction ────────────>|<──── test ────>|
 |<──── fit (1 - val_fraction) ────>|< val >|
 ```
 
-With 1000 points and the defaults: 680 fit, 120 validation, 200 test.
+### Pre-processing
 
-1. **Normalization.** Mean and standard deviation are computed **per column** on the *fit*
-   portion only and applied to the whole data, so nothing from validation or test leaks into
-   training. The target gets its own statistics, used to convert predictions back to original
-   units. A constant column gets a std of 1 to avoid dividing by zero.
-2. **Windowing.** `create_windows` turns the feature matrix into pairs
+1. **Normalization.** Mean and standard deviation are computed per column on the *fit*
+   portion only and applied to the whole data. The target gets its own statistics, used to convert predictions back to original units. A constant column gets a std of 1 to avoid dividing by zero.
+2. **Windowing.** `create_windows()` turns the feature matrix into pairs
    `X[i] = features[i : i + window]` (shape `(window, n_features)`) and
    `y[i] = target[i + window]`. Validation and test windows borrow the last `window` rows of the
-   preceding split as context, so every target in those splits gets a prediction.
+   preceding split as context.
 
 ### Model
 
@@ -269,7 +246,7 @@ input (batch, window, n_features) ─> LSTM (n_layers, hidden) ─> last time st
 
 ### Training
 
-- Loss: mean squared error. Optimizer: Adam.
+- Loss: **MSE**, mean squared error. Optimizer: Adam.
 - Each epoch trains on shuffled mini-batches of the fit windows, then computes
   the validation loss.
 - If the validation loss hasn't improved for `patience` epochs, training stops.
@@ -312,32 +289,33 @@ units:
 | `scatter.png`     | Predicted vs actual; a perfect model lies on the diagonal |
 | `residuals.png`   | Residuals over time and their histogram |
 
-## Using the library from Python
+## Script udage
 
 The modules in `src/pytorchlstm` can be used directly:
 
 ```python
-from dataclasses import asdict
+import pandas as pd
+from dataclasses import replace
+from pytorchlstm.data import column_stats, select_columns
 
-import numpy as np
+df = pd.read_csv("data/demo.csv")
+features = select_columns(df, ["value", "lead"])  
+target = select_columns(df, ["value"])[:, 0]  
 
-from pytorchlstm.checkpoint import load_checkpoint, save_checkpoint
-from pytorchlstm.config import Config
-from pytorchlstm.data import create_windows
-from pytorchlstm.evaluation import mae, rmse
-from pytorchlstm.model import LSTMModel
-from pytorchlstm.plotting import plot_predictions, save_figure
-from pytorchlstm.training import fit, predict, set_seed
+mean, std = column_stats(features[:700]) 
+features = (features - mean) / std
+target = (target - mean[0]) / std[0]
 
-series = np.sin(np.arange(500) / 20).astype(np.float32)
+X, y = create_windows(features, 30, target)  
+
 config = Config()
+config = replace(
+    config,
+    model=replace(config.model, n_features=2),
+    data=replace(config.data, target="value", features=["value", "lead"]),
+)
 
-X, y = create_windows(series, config.data.window)  # X: (n, 30, 1), y: (n,)
-X_train, y_train = X[:350], y[:350]
-X_val, y_val = X[350:400], y[350:400]
-X_test, y_test = X[400:], y[400:]
-
-set_seed(config.training.seed)  # before building the model: seeds the initial weights
+set_seed(config.training.seed)
 model = LSTMModel(**asdict(config.model))
 result = fit(model, X_train, y_train, X_val, y_val, epochs=50, patience=5)
 print(result.best_epoch, result.stopped_early)
@@ -346,41 +324,6 @@ preds = predict(model, X_test)
 print(f"MAE {mae(y_test, preds):.4f}  RMSE {rmse(y_test, preds):.4f}")
 
 save_figure(plot_predictions(y_test, preds), "plots/example.png")
-
-save_checkpoint("models/example.pt", model, config, mean=0.0, std=1.0)
-ckpt = load_checkpoint("models/example.pt")
-```
-
-For multivariate data, pass a 2D array of shape `(n, n_features)` together with the target:
-
-```python
-from dataclasses import replace
-
-import pandas as pd
-
-from pytorchlstm.data import column_stats, select_columns
-
-df = pd.read_csv("data/demo.csv")
-features = select_columns(df, ["value", "lead"])  # (1000, 2)
-target = select_columns(df, ["value"])[:, 0]  # (1000,)
-
-mean, std = column_stats(features[:700])  # per-column statistics
-features = (features - mean) / std
-target = (target - mean[0]) / std[0]
-
-X, y = create_windows(features, 30, target)  # X: (970, 30, 2), y: (970,)
-
-config = Config()
-config = replace(
-    config,
-    model=replace(config.model, n_features=2),
-    data=replace(config.data, target="value", features=["value", "lead"]),
-)
-set_seed(config.training.seed)
-model = LSTMModel(**asdict(config.model))
-# ... fit and predict exactly as above ...
-
-# Target statistics default to the matching feature when the target is a feature
 save_checkpoint("models/multi.pt", model, config, mean, std)
 ```
 
@@ -398,15 +341,14 @@ save_checkpoint("models/multi.pt", model, config, mean, std)
 
 `FitResult` has `train_loss`, `val_loss`, `best_epoch` (1-based) and
 `stopped_early`. The plotting functions build `Figure` objects directly
-instead of using `pyplot`, so they work headless and don't leak global state.
+instead of using `pyplot`.
 
 ## Project layout
 
 ```
 pytorchlstm/
 ├── configs/
-│   ├── default.json         # univariate example configuration
-│   └── multivariate.json    # multivariate example configuration
+│   └── default.json         # example configuration
 ├── data/                    # input CSVs (contents git-ignored)
 ├── models/                  # saved checkpoints
 ├── plots/                   # generated plots (contents git-ignored)
@@ -423,7 +365,9 @@ pytorchlstm/
 │   ├── plotting.py          # evaluation figures
 │   └── training.py          # fit (early stopping), train, predict
 ├── tests/                   # pytest suite
-└── pyproject.toml
+├── pyproject.toml
+├── .gitignore
+└── README.md
 ```
 
 ## Development
@@ -444,11 +388,6 @@ on small synthetic series.
 
 ## Limitations
 
-- **Single target.** The model predicts one column. Forecasting several columns at once would
-  need a multi-output head.
-- **One step ahead.** `predict.py` forecasts only the next value. Multi-step
-  forecasts would mean feeding predictions back in or training a multi-output
-  head.
 - **CPU only.** Tensors are never moved to a GPU. That's fine at this scale, but
   big datasets would need device handling added.
 - **Bitwise reproducibility is per machine.** A different number of CPU threads or a different
