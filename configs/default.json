@@ -1,0 +1,10 @@
+{
+  "model": {"hidden": 64, "n_layers": 2},
+  "data": {
+    "window": 30,
+    "train_fraction": 0.8,
+    "target": "value",
+    "features": ["value", "lead"]
+  },
+  "training": {"epochs": 40, "lr": 0.005, "batch_size": 32, "seed": 0}
+}
