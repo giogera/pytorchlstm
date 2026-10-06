@@ -229,7 +229,7 @@ The series is split in time order and never shuffled across splits:
 |<──── fit (1 - val_fraction) ────>|< val >|
 ```
 
-### Pre-processing
+### Preprocessing
 
 1. **Normalization.** Mean and standard deviation are computed per column on the *fit*
    portion only and applied to the whole data. The target gets its own statistics, used to convert predictions back to original units. A constant column gets a std of 1 to avoid dividing by zero.
@@ -289,7 +289,7 @@ units:
 | `scatter.png`     | Predicted vs actual; a perfect model lies on the diagonal |
 | `residuals.png`   | Residuals over time and their histogram |
 
-## Script udage
+## Script usage
 
 The modules in `src/pytorchlstm` can be used directly:
 
