@@ -350,8 +350,6 @@ pytorchlstm/
 ├── configs/
 │   └── default.json         # example configuration
 ├── data/                    # input CSVs (contents git-ignored)
-├── models/                  # saved checkpoints
-├── plots/                   # generated plots (contents git-ignored)
 ├── scripts/
 │   ├── make_demo_data.py    # generate data/demo.csv
 │   ├── train.py             # train, evaluate, save checkpoint and plots
